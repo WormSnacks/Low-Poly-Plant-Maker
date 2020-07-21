@@ -18,30 +18,30 @@ Created by YOUR NAME
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-from . import auto_load
-import bpy
 bl_info = {
-    "name": "Low Poly Plant Maker",
-    "description": "A plant maker for low poly stem based plants",
+    "name": "Plant Maker",
+    "description": "A plant maker for You Are A Bear",
     "author": "Wren <w.masonblaug@gmail.com>",
     "version": (0, 0, 1),
     "blender": (2, 83, 0),
     "location": "View3D",
     "warning": "This addon is still in development.",
-    # "wiki_url": "",
-    "category": "Object"}
+    #"wiki_url": "",
+    "category": "Object" }
+
+
+import bpy
 
 
 # load and reload submodules
 ##################################
 
+from . import auto_load
 
 auto_load.init()
 
-
 def register():
     auto_load.register()
-
 
 def unregister():
     auto_load.unregister()

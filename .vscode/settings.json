@@ -8,10 +8,5 @@
         "--init-hook",
         "import sys; sys.path.append('C:\\Users\\wren\\Dropbox\\3D Modeling\\Program Assets\\Blender Assets\\blender_autocomplete-master\\blender_autocomplete-master\\2.82')"
     ],
-    "python.formatting.autopep8Args": [
-        "--max-line-length",
-        "79",
-        "--experimental"
-    ],
-    "python.linting.pylintEnabled": false,
+    "python.formatting.autopep8Args": ["--max-line-length", "79", "--experimental"],
 }

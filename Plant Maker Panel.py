@@ -80,10 +80,13 @@ class PlantMakerPanel(bpy.types.Panel):
 
         col = layout.column()
         col.label(text="Particle System Data")
-        if stemProp.hairParticleObj is not None:
+        if stemProp.hairParticleObj is not None and stemProp.baseStemObj is None:
             col.prop(stemProp, "heightFalloffFromCenter",
                         text="Relative height falloff from center")
             col.operator("mesh.stem_apply")
+        elif stemProp.baseStemObj is not None:
+            col.prop(stemProp, "baseStemObj", text="Duplicate of")
+
 
         col = layout.column()
         col.operator("mesh.stem_randomizer")

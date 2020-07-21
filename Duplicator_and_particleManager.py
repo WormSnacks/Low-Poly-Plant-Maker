@@ -17,6 +17,8 @@ class StemApplier(bpy.types.Operator):
         stemProp = context.object.data.stem_properties
         stemObj = context.object
         hairObj = stemProp.hairParticleObj
+        stemProp.baseStemObj = None
+        bpy.ops.mesh.stem_randomizer()
         # We're going to want to keep this organized
         # collectionMade = False
         fullCollection = None
@@ -76,7 +78,7 @@ class StemApplier(bpy.types.Operator):
 
                 override = context.copy()
                 override['object'] = stemProp.hairParticleObj
-                print(context.object.name)
+                # print(context.object.name)
                 bpy.ops.object.modifier_convert(override,
                                                 modifier=mod.name)
 
@@ -90,6 +92,23 @@ class StemApplier(bpy.types.Operator):
         curveObjs = []
         for obj in curveCollection.objects:
             curveObjs.append(obj)
+            bm = bmesh.new()
+            bm.from_mesh(obj.data)
+            bm.verts.ensure_lookup_table()
+            origin = mathutils.Vector(
+                (bm.verts[0].co[0],
+                 bm.verts[0].co[1],
+                 bm.verts[0].co[2]))
+            # print(bm.verts[0].co)
+            bmesh.ops.translate(bm,
+                                verts=bm.verts,
+                                vec=-origin,
+                                )
+            bm.to_mesh(obj.data)
+            obj.data.update()
+            # print(origin)
+            obj.location = origin
+
         override = context.copy()
         override['selected_objects'] = curveObjs
         bpy.ops.object.convert(target='CURVE', keep_original=False)
@@ -102,9 +121,11 @@ class StemApplier(bpy.types.Operator):
 
         # CURVES NOW PREPARED!!
         # now get to adding curve modifier to stemObj and duplicating it!
+        # Find radius of curve collection for falloff
 
         CurveCheck(stemObj)
         stemObjs = []
+
         # stemObjs.append(stemObj)
         for obj in stemObj.children:
             CurveCheck(obj)
@@ -116,36 +137,25 @@ class StemApplier(bpy.types.Operator):
             newStem.animation_data_clear()
             meshCollection.objects.link(newStem)
             newStem.data.stem_properties.baseStemObj = stemObj
-            # override = context.copy()
-            # override['object'] = newStem
-            # override['active_object'] = newStem
-            # override['selected_objects'] = [newStem]
 
-            win = context.window
-            scr = win.screen
-            areas3d = [area for area in scr.areas if area.type == 'VIEW_3D']
-            region = [
-                region for region in areas3d[0].regions if region.type == 'WINDOW']
-
-            override = {'window': win,
-                        'screen': scr,
-                        'area': areas3d[0],
-                        'region': region[0],
-                        'scene': context.scene,
-                        'active_object': newStem
-                        }
-
-            bpy.ops.mesh.stem_randomizer(override)
-            # for obj in stemObjs:                
-            #     newStemObject = obj.copy()
-            #     newStemObject.data = obj.data.copy()
-            #     newStemObject.animation_data_clear()
-            #     meshCollection.objects.link(newStemObject)
-            #     newStemObject.parent = newStem
-            # probably need to add it to collection as well!
-            # bpy.ops.object.duplicate(override, linked=False, mode='TRANSLATION')
+            bpy.ops.object.select_all(action='DESELECT')
+            context.view_layer.objects.active = newStem
+            bpy.ops.mesh.stem_randomizer()
+            target_curve = curveCollection.objects[x]
+            newStem.location = target_curve.location
+            ApplyCurveMod(newStem, target_curve)
+            for child in newStem.children:
+                ApplyCurveMod(child, target_curve)
+        context.view_layer.objects.active = stemObj
         return{'FINISHED'}
 
+
+def ApplyCurveMod(obj, curve):
+    for mod in obj.modifiers:
+            # print(mod.name)
+        if "Stem Curve" in mod.name and mod.type == 'CURVE':
+            mod.object = curve
+            mod.deform_axis = 'POS_Z'
 
 def CurveCheck(obj):
     hasCurve = False

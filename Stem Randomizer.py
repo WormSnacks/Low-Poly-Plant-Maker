@@ -15,15 +15,12 @@ class StemRandomizer(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return (context.object.data.stem_properties.isStemObject)
+        return (context.view_layer.objects.active.data.stem_properties.isStemObject)
 
     def execute(self, context):
-        if context.object.data.type is not 'OBJECT':
-            print("Invalid Stem!")
-            return{'FINISHED'}
 
-        stemProp = context.object.data.stem_properties
-        stemObj = context.object
+        stemObj = context.view_layer.objects.active
+        stemProp = stemObj.data.stem_properties
         # resize stem, set to one first in case this has been done before
         random.seed()
         stemSize = random.uniform(stemProp.stemScaleHeightMin,
@@ -34,17 +31,17 @@ class StemRandomizer(bpy.types.Operator):
         # stemMesh = bmesh.from_mesh(stemObject)
 
         # Subdivide previous resolutions, keeping top and bottom rings
-        # if context.object.mode is not 'EDIT':
+        # if stemObj.mode is not 'EDIT':
         #     bpy.ops.object.mode_set(mode='EDIT')
-# 
+#
         # bpy.ops.mesh.select_all(action='SELECT')
         # bpy.ops.mesh.dissolve_limited()
         # bpy.ops.mesh.select_face_by_sides(number=6)
 
         bm = bmesh.new()
-        bm.from_mesh(context.object.data)
+        bm.from_mesh(stemObj.data)
+
         bm.faces.ensure_lookup_table()
-        bmesh.ops.dissolve_limit(bm, angle_limit=0.0872663)
         topFace = bm.faces[0]
         bottomFace = bm.faces[0]
         for face in bm.faces:
@@ -73,40 +70,28 @@ class StemRandomizer(bpy.types.Operator):
         bmesh.ops.translate(bm, verts=bottomFace.verts, vec=translateVec)
         bmesh.ops.scale(bm, verts=bottomFace.verts, vec=scaleVec)
 
-        bm.to_mesh(context.object.data)
+        bm.edges.ensure_lookup_table()
+        subDivEdges = []
+        for edge in bm.edges:
+            if edge not in topFace.edges and edge not in bottomFace.edges:
+                subDivEdges.append(edge)
+
+        topEdges = [ele for ele in topFace.edges
+                    if isinstance(ele, bmesh.types.BMEdge)]
+        bottomEdges = [ele for ele in bottomFace.edges
+                       if isinstance(ele, bmesh.types.BMEdge)]
+
+        bmesh.ops.delete(bm, geom=subDivEdges, context='EDGES')
+        subDivEdges = bmesh.ops.bridge_loops(bm, edges=topEdges+bottomEdges)
+        # bmesh.ops.dissolve_edges(bm, edges=subDivEdges)
+
+        bmesh.ops.subdivide_edges(
+            bm, edges=subDivEdges['edges'], cuts=stemProp.stemResolution, use_grid_fill=True,
+            use_only_quads=True)
+
+        bm.to_mesh(stemObj.data)
         bm.free()
-        # bm.faces.ensure_lookup_table()
-
-# 
-        # win = context.window
-        # scr = win.screen
-        # areas3d = [area for area in scr.areas if area.type == 'VIEW_3D']
-        # region = [
-        #     region for region in areas3d[0].regions if region.type == 'WINDOW']
-# 
-        # override = {'window': win,
-        #             'screen': scr,
-        #             'area': areas3d[0],
-        #             'region': region[0],
-        #             'scene': context.scene,
-        #             }
-        # 
-
-        # bpy.ops.mesh.loopcut(override, MESH_OT_loopcut={"number_cuts":stemProp.stemResolution,
-        if context.object.mode is not 'EDIT':
-            bpy.ops.object.mode_set_with_submode(mode='EDIT', mesh_select_mode={'FACE'})
-
-        bpy.ops.mesh.select_face_by_sides()
-        bpy.ops.mesh.loopcut(override,
-                             number_cuts=stemProp.stemResolution,
-                             smoothness=0,
-                             falloff='INVERSE_SQUARE',
-                             object_index=0,
-                             edge_index=12,
-                             mesh_select_mode_init=(False, False, True))
-
-        bpy.ops.object.mode_set(override, mode='OBJECT')
-
+        
         # Now clean up Leaves
         if stemProp.leafMeshOne is not None:
             prepareLeaves(
@@ -147,10 +132,11 @@ def floatLerp(a, b, c):
 
 
 def prepareLeaves(context, leafObj, num, min, max, stemSize, stemProp):
-    # stemProp = context.object.data.stem_properties
-
+    # stemProp = stemObj.data.stem_properties
+    stemObj = context.view_layer.objects.active
     extantLeaves = []
-    extantLeaves.append(context.object)  # placeholder
+    extantLeaves.append(stemObj)  # placeholder
+    # print(context.view_layer.objects.active.name)
     leafname = ''
     if len(leafObj.name.split('.')) > 1:
         leafnamelist = leafObj.name.split('.')
@@ -158,23 +144,24 @@ def prepareLeaves(context, leafObj, num, min, max, stemSize, stemProp):
         leafname = ''.join([str(elem) for elem in leafnamelist])
     else:
         leafname = leafObj.name
-    for child in context.object.children:
-        
+    for child in stemObj.children:
+
         if leafname in child.name and child is not leafObj:
             extantLeaves.append(child)
 
     # below implies that this is a root stem, not a copy
     # this way when we duplicate to apply to curves
     # we can still keep references to base stem leaves
-    if stemProp.baseStemObj is not None:
-        if leafObj.parent is not context.object:
-            leafObj.parent = context.object
-    else:
+    if stemProp.baseStemObj is None:
+        if leafObj.parent is not stemObj:
+            leafObj.parent = stemObj
+    elif stemProp.baseStemObj is not None:
+        
         newLeaf = leafObj.copy()
         newLeaf.data = leafObj.data.copy()
         newLeaf.animation_data_clear()
-        context.object.users_collection[0].objects.link(newLeaf)
-        newLeaf.parent = context.object
+        stemObj.users_collection[0].objects.link(newLeaf)
+        newLeaf.parent = stemObj
 
     extantLeaves[0] = leafObj
     if len(extantLeaves) > num:
@@ -191,8 +178,8 @@ def prepareLeaves(context, leafObj, num, min, max, stemSize, stemProp):
             newLeaf = leafObj.copy()
             newLeaf.data = leafObj.data.copy()
             newLeaf.animation_data_clear()
-            context.object.users_collection[0].objects.link(newLeaf)
-            newLeaf.parent = context.object
+            stemObj.users_collection[0].objects.link(newLeaf)
+            newLeaf.parent = stemObj
             extantLeaves.append(newLeaf)
 
     # put them all in position
@@ -213,39 +200,10 @@ def prepareLeaves(context, leafObj, num, min, max, stemSize, stemProp):
 
 
 def prepareFlowers(context, flowerObj, flowerPos, stemSize, stemProp):
-    if flowerObj.parent is not context.object:
-        flowerObj.parent = context.object
-    flowerObj.location = [0, 0, floatLerp(stemSize, 0, flowerPos)]
+    stemObj = context.view_layer.objects.active
+    if flowerObj.parent is not stemObj:
+        flowerObj.parent = stemObj
+    flowerObj.location = [0, 0, stemSize-flowerPos]
     flowerObj.rotation_euler = [0, 0, random.uniform(0, 359)]
     return
 
-
-def unused():
-    bpy.ops.transform.rotate(
-        value=random.uniform(0, 359), orient_axis='Z', orient_type='LOCAL',
-        orient_matrix=leaf.matrix_local.to_3x3(),
-        orient_matrix_type='LOCAL',
-        constraint_axis=(False, False, True),
-        mirror=True, use_proportional_edit=False,
-        proportional_edit_falloff='SMOOTH', proportional_size=1,
-        use_proportional_connected=False,
-        use_proportional_projected=False)
-    # move up in the range, assuming leaf range is 0-1
-    # across given length of stem
-    bpy.ops.transform.translate(
-        value=(
-            floatLerp(
-                stemProp.stemScaleBottom*.01,
-                stemProp.stemScaleTop*.01,
-                leafHeight),
-            0,
-            leafHeightAdjusted),
-        orient_type='LOCAL',
-        orient_matrix=leaf.matrix_local.to_3x3(),
-        orient_matrix_type='LOCAL',
-        constraint_axis=(False, False, True),
-        mirror=True, use_proportional_edit=False,
-        proportional_edit_falloff='SMOOTH',
-        proportional_size=1,
-        use_proportional_connected=False,
-        use_proportional_projected=False)
