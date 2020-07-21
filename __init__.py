@@ -19,8 +19,8 @@ Created by YOUR NAME
 '''
 
 bl_info = {
-    "name": "Plant Maker",
-    "description": "A plant maker for You Are A Bear",
+    "name": "Low Poly Plant Maker",
+    "description": "A plant maker for low poly stem based plants",
     "author": "Wren <w.masonblaug@gmail.com>",
     "version": (0, 0, 1),
     "blender": (2, 83, 0),
