@@ -4,7 +4,7 @@ import bpy
 class CurveApplicator(bpy.types.Operator):
     """applies meshes to curves"""
     bl_idname = "plant.curve_applicator"
-    bl_label = "Applies Plant Maker meshes to a collection of curves"
+    bl_label = "Applies Plant Maker meshes to a collection of curves, depricated"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
