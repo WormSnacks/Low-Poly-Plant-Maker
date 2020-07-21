@@ -20,7 +20,7 @@ Created by YOUR NAME
 
 bl_info = {
     "name": "Plant Maker",
-    "description": "A plant maker for You Are A Bear",
+    "description": "A parametric low poly plant maker for Blender 2.83",
     "author": "Wren <w.masonblaug@gmail.com>",
     "version": (0, 0, 1),
     "blender": (2, 83, 0),

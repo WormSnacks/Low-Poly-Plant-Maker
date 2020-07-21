@@ -188,12 +188,16 @@ def prepareLeaves(context, leafObj, num, min, max, stemSize, stemProp):
         leafHeight = random.uniform(
             min, max)
         leaf.rotation_euler = [0, 0, random.uniform(0, 359)]
-        leaf.location = [floatLerp(
+        Loc = mathutils.Vector((floatLerp(
             stemProp.stemScaleBottom*.01,
             stemProp.stemScaleTop*.01,
-            leafHeight),
+            leafHeight) * -1,
             0,
-            leafHeight * stemSize]
+            leafHeight * stemSize))
+        mat = leaf.rotation_euler.to_matrix().copy()
+        mat.invert()
+        localLoc = Loc @ mat
+        leaf.location = localLoc
         # random z rotation around stem
 
     return
