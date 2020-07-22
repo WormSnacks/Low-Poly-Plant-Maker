@@ -82,6 +82,11 @@ class StemApplier(bpy.types.Operator):
                 bpy.ops.object.modifier_convert(override,
                                                 modifier=mod.name)
 
+        # Below code takes converted particle system mesh and
+        # turns it into smooth bezier curves, as well as determines
+        # the distance of the farthest curve for heightfalloff later
+        # Height falloff based off of closest curve to particle 
+        # system mesh origin
         for obj in curveCollection.objects:
             if "Mesh" in obj.name:
 
@@ -90,6 +95,9 @@ class StemApplier(bpy.types.Operator):
                 bpy.ops.mesh.separate(override, type='LOOSE')
 
         curveObjs = []
+        curveCenter = curveCollection.objects[0].location
+        farthestCurvePos = [0,0,0]
+        closestCurvePos = [0,0,0]
         for obj in curveCollection.objects:
             curveObjs.append(obj)
             bm = bmesh.new()
@@ -108,6 +116,13 @@ class StemApplier(bpy.types.Operator):
             obj.data.update()
             # print(origin)
             obj.location = origin
+            dist = (curveCenter - obj.location)
+            if dist > farthestCurvePos:
+                farthestCurvePos = obj.location
+            elif dist < closestCurvePos:
+                closestCurvePos = obj.location
+
+        curveRange = farthestCurvePos - closestCurvePos
 
         override = context.copy()
         override['selected_objects'] = curveObjs
@@ -140,8 +155,10 @@ class StemApplier(bpy.types.Operator):
 
             bpy.ops.object.select_all(action='DESELECT')
             context.view_layer.objects.active = newStem
-            bpy.ops.mesh.stem_randomizer()
             target_curve = curveCollection.objects[x]
+            adjustedDist = (curveCenter-target_curve).length
+            hFalloff = floatLerp(stemProp.heightfalloff, 1, adjustedDist)
+            bpy.ops.mesh.stem_randomizer()
             newStem.location = target_curve.location
             ApplyCurveMod(newStem, target_curve)
             for child in newStem.children:
@@ -175,3 +192,6 @@ def recurLayerCollection(layerColl, collName):
         found = recurLayerCollection(layer, collName)
         if found:
             return found
+
+def floatLerp(a, b, c):
+    return (c*a)+((1-c) * b)
