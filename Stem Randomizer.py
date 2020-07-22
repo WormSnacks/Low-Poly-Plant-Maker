@@ -203,11 +203,18 @@ def FindLeafPos(leaf, leafObj, min,max,stemProp, stemSize):
     mat.invert()
     localLoc = Loc @ mat
     leaf.location = localLoc
-    if stemProp.scaleLeafZOnly:
+    # Assumes uniform leaf scale because I didnt want to set up the randomization three times
+    if leaf != leafObj and stemProp.leafScaleVariance != 0:
         s = leafObj.scale
-        leaf.scale = mathutils.Vector((s[0],s[1], s[2]*random.uniform(-stemProp.leafScaleVariance/2, stemProp.leafScaleVariance/2)))
-    else:
-        leaf.scale = leafObj.scale * random.uniform(-stemProp.leafScaleVariance/2, stemProp.leafScaleVariance/2)
+        sv = (s * stemProp.leafScaleVariance)/2
+        ssv = random.uniform(0,1)
+        svv = mathutils.Vector((floatLerp(s[0] - sv[0], s[0] + sv[0], ssv), floatLerp(s[0] - sv[0], s[0] + sv[0], ssv), floatLerp(s[0] - sv[0], s[0] + sv[0], ssv)))
+        if stemProp.scaleLeafZOnly:
+            leaf.scale = mathutils.Vector((s[0],s[1], svv[2]))
+        else:
+            leaf.scale = mathutils.Vector((svv,svv,svv))
+    elif leaf != leafObj and stemProp.leafScaleVariance == 0:
+        leaf.scale = leafObj.scale
     # check if leaf is upside down, dot product to matrix world FINISH LATER
     # up = leaf.matrix_local.to_quaternion() @ Vector((0.0, 0.0, 1.0))
     # if (up.dot())
