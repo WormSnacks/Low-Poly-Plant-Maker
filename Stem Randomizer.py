@@ -86,12 +86,13 @@ class StemRandomizer(bpy.types.Operator):
         # bmesh.ops.dissolve_edges(bm, edges=subDivEdges)
 
         bmesh.ops.subdivide_edges(
-            bm, edges=subDivEdges['edges'], cuts=stemProp.stemResolution, use_grid_fill=True,
+            bm, edges=subDivEdges['edges'],
+            cuts=stemProp.stemResolution, use_grid_fill=True,
             use_only_quads=True)
 
         bm.to_mesh(stemObj.data)
         bm.free()
-        
+
         # Now clean up Leaves
         if stemProp.leafMeshOne is not None:
             prepareLeaves(
@@ -156,7 +157,7 @@ def prepareLeaves(context, leafObj, num, min, max, stemSize, stemProp):
         if leafObj.parent is not stemObj:
             leafObj.parent = stemObj
     elif stemProp.baseStemObj is not None:
-        
+
         newLeaf = leafObj.copy()
         newLeaf.data = leafObj.data.copy()
         newLeaf.animation_data_clear()
@@ -185,22 +186,32 @@ def prepareLeaves(context, leafObj, num, min, max, stemSize, stemProp):
     # put them all in position
     for leaf in extantLeaves:
         # bpy.ops.object.select_all(action='DESELECT')
-        leafHeight = random.uniform(
-            min, max)
-        leaf.rotation_euler = [0, 0, random.uniform(0, 359)]
-        Loc = mathutils.Vector((floatLerp(
-            stemProp.stemScaleBottom*.01,
-            stemProp.stemScaleTop*.01,
-            leafHeight) * -1,
-            0,
-            leafHeight * stemSize))
-        mat = leaf.rotation_euler.to_matrix().copy()
-        mat.invert()
-        localLoc = Loc @ mat
-        leaf.location = localLoc
+        FindLeafPos(leaf, leafObj,min,max, stemProp, stemSize)
         # random z rotation around stem
 
-    return
+
+def FindLeafPos(leaf, leafObj, min,max,stemProp, stemSize):
+    leafHeight = random.uniform(min, max)
+    leaf.rotation_euler = [0, 0, random.uniform(0, 359)]
+    Loc = mathutils.Vector((floatLerp(
+        stemProp.stemScaleBottom*.01,
+        stemProp.stemScaleTop*.01,
+        leafHeight) * -1,
+        0,
+        leafHeight * stemSize))
+    mat = leaf.rotation_euler.to_matrix().copy()
+    mat.invert()
+    localLoc = Loc @ mat
+    leaf.location = localLoc
+    if stemProp.scaleLeafZOnly:
+        s = leafObj.scale
+        leaf.scale = mathutils.Vector((s[0],s[1], s[2]*random.uniform(-stemProp.leafScaleVariance/2, stemProp.leafScaleVariance/2)))
+    else:
+        leaf.scale = leafObj.scale * random.uniform(-stemProp.leafScaleVariance/2, stemProp.leafScaleVariance/2)
+    # check if leaf is upside down, dot product to matrix world FINISH LATER
+    # up = leaf.matrix_local.to_quaternion() @ Vector((0.0, 0.0, 1.0))
+    # if (up.dot())
+    
 
 
 def prepareFlowers(context, flowerObj, flowerPos, stemSize, stemProp):
@@ -210,4 +221,3 @@ def prepareFlowers(context, flowerObj, flowerPos, stemSize, stemProp):
     flowerObj.location = [0, 0, stemSize-flowerPos]
     flowerObj.rotation_euler = [0, 0, random.uniform(0, 359)]
     return
-

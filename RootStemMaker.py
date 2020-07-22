@@ -72,6 +72,8 @@ class StemProperties(bpy.types.PropertyGroup):
     leafPosRangeMax: bpy.props.FloatProperty(min=0, max=1, default=0.5)
     flowerOnePos: bpy.props.FloatProperty(min=0, max=1, default=0.95)
     flowerTwoPos: bpy.props.FloatProperty(min=0, max=1, default=0.95)
+    leafScaleVariance: bpy.props.FloatProperty(min=0, soft_max=1, default=0.1)
+    scaleLeafZOnly: bpy.props.BoolProperty(default=True)
     # number of Leaves
     leafOneNum: bpy.props.IntProperty(min=0, soft_max=25, default=10)
     leafTwoNum: bpy.props.IntProperty(min=0, soft_max=25, default=10)

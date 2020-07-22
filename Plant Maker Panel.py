@@ -68,6 +68,10 @@ class PlantMakerPanel(bpy.types.Panel):
                     "leafPosRangeMin", text="Leaf Distribution Bottom")
         col.prop(stemProp,
                     "leafPosRangeMax", text="Leaf Distribution Top")
+        col.prop(stemProp,
+                    "leafScaleVariance", text="Leaf Scale Variance")
+        col.prop(stemProp,
+                    "scaleLeafZOnly", text="Lock Scale Variance to leaf Z")
         if stemProp.leafMeshOne is not None:
             col.prop(stemProp,
                         "leafOneNum", text="Number of Leaf Ones")
