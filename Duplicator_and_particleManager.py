@@ -85,7 +85,7 @@ class StemApplier(bpy.types.Operator):
         # Below code takes converted particle system mesh and
         # turns it into smooth bezier curves, as well as determines
         # the distance of the farthest curve for heightfalloff later
-        # Height falloff based off of closest curve to particle 
+        # Height falloff based off of closest curve to particle
         # system mesh origin
         for obj in curveCollection.objects:
             if "Mesh" in obj.name:
@@ -95,9 +95,8 @@ class StemApplier(bpy.types.Operator):
                 bpy.ops.mesh.separate(override, type='LOOSE')
 
         curveObjs = []
-        curveCenter = curveCollection.objects[0].location
-        farthestCurvePos = [0,0,0]
-        closestCurvePos = [0,0,0]
+        curveCenter = stemProp.hairParticleObj.location
+        curveDistRange = [0, 0]
         for obj in curveCollection.objects:
             curveObjs.append(obj)
             bm = bmesh.new()
@@ -116,13 +115,11 @@ class StemApplier(bpy.types.Operator):
             obj.data.update()
             # print(origin)
             obj.location = origin
-            dist = (curveCenter - obj.location)
-            if dist > farthestCurvePos:
-                farthestCurvePos = obj.location
-            elif dist < closestCurvePos:
-                closestCurvePos = obj.location
-
-        curveRange = farthestCurvePos - closestCurvePos
+            dist = (curveCenter - obj.location).length
+            if dist > curveDistRange[1]:
+                curveDistRange[1] = dist
+            elif dist < curveDistRange[0]:
+                curveDistRange[0] = dist
 
         override = context.copy()
         override['selected_objects'] = curveObjs
@@ -156,8 +153,13 @@ class StemApplier(bpy.types.Operator):
             bpy.ops.object.select_all(action='DESELECT')
             context.view_layer.objects.active = newStem
             target_curve = curveCollection.objects[x]
-            adjustedDist = (curveCenter-target_curve).length
-            hFalloff = floatLerp(stemProp.heightfalloff, 1, adjustedDist)
+            adjustedDist = scaleRange(
+                (curveCenter-target_curve.location).length, curveDistRange, [0, 1])
+            hFalloff = floatLerp(
+                1-stemProp.heightFalloffFromCenter, 1, adjustedDist)
+            hFalloff = easeOutCubic(hFalloff)
+            newStem.data.stem_properties.stemScaleHeightMax *= hFalloff
+            newStem.data.stem_properties.stemScaleHeightMin *= hFalloff
             bpy.ops.mesh.stem_randomizer()
             newStem.location = target_curve.location
             ApplyCurveMod(newStem, target_curve)
@@ -167,12 +169,24 @@ class StemApplier(bpy.types.Operator):
         return{'FINISHED'}
 
 
+def scaleRange(val, src, dst):
+    """
+    Scale the given value from the scale of src to the scale of dst.
+    """
+    return ((val - src[0]) / (src[1]-src[0])) * (dst[1]-dst[0]) + dst[0]
+
+
+def easeOutCubic(x):
+    return (1 - pow(1 - x, 3))
+
+
 def ApplyCurveMod(obj, curve):
     for mod in obj.modifiers:
-            # print(mod.name)
+        # print(mod.name)
         if "Stem Curve" in mod.name and mod.type == 'CURVE':
             mod.object = curve
             mod.deform_axis = 'POS_Z'
+
 
 def CurveCheck(obj):
     hasCurve = False
@@ -192,6 +206,7 @@ def recurLayerCollection(layerColl, collName):
         found = recurLayerCollection(layer, collName)
         if found:
             return found
+
 
 def floatLerp(a, b, c):
     return (c*a)+((1-c) * b)
