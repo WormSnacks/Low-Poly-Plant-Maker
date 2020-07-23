@@ -2,6 +2,11 @@ import bpy
 import bmesh
 import random
 import mathutils
+from .common_funcs import (
+    get_heirs,
+    floatLerp,
+    copyObj
+)
 
 
 class StemRandomizer(bpy.types.Operator):
@@ -128,10 +133,6 @@ class StemRandomizer(bpy.types.Operator):
     # print("Goodbye World")
 
 
-def floatLerp(a, b, c):
-    return (c*a)+((1-c) * b)
-
-
 def prepareLeaves(context, leafObj, num, min, max, stemSize, stemProp):
     # stemProp = stemObj.data.stem_properties
     stemObj = context.view_layer.objects.active
@@ -185,12 +186,13 @@ def prepareLeaves(context, leafObj, num, min, max, stemSize, stemProp):
 
     # put them all in position
     for leaf in extantLeaves:
-        # bpy.ops.object.select_all(action='DESELECT')
-        FindLeafPos(leaf, leafObj,min,max, stemProp, stemSize)
+
+        FindLeafPos(leaf, leafObj, min, max, stemProp, stemSize)
+
         # random z rotation around stem
 
 
-def FindLeafPos(leaf, leafObj, min,max,stemProp, stemSize):
+def FindLeafPos(leaf, leafObj, min, max, stemProp, stemSize):
     leafHeight = random.uniform(min, max)
     leaf.rotation_euler = [0, 0, random.uniform(0, 359)]
     Loc = mathutils.Vector((floatLerp(
@@ -207,24 +209,40 @@ def FindLeafPos(leaf, leafObj, min,max,stemProp, stemSize):
     if leaf != leafObj and stemProp.leafScaleVariance != 0:
         s = leafObj.scale
         sv = (s * stemProp.leafScaleVariance)/2
-        ssv = random.uniform(0,1)
-        svv = mathutils.Vector((floatLerp(s[0] - sv[0], s[0] + sv[0], ssv), floatLerp(s[0] - sv[0], s[0] + sv[0], ssv), floatLerp(s[0] - sv[0], s[0] + sv[0], ssv)))
+        ssv = random.uniform(0, 1)
+        svv = mathutils.Vector(
+            (floatLerp(s[0] - sv[0],
+                       s[0] + sv[0],
+                       ssv),
+             floatLerp(s[1] - sv[1],
+                       s[1] + sv[1],
+                       ssv),
+             floatLerp(s[2] - sv[2],
+                       s[2] + sv[2],
+                       ssv)))
         if stemProp.scaleLeafZOnly:
-            leaf.scale = mathutils.Vector((s[0],s[1], svv[2]))
+            leaf.scale = mathutils.Vector((s[0], s[1], svv[2]))
         else:
-            leaf.scale = mathutils.Vector((svv,svv,svv))
+            leaf.scale = mathutils.Vector((svv, svv, svv))
     elif leaf != leafObj and stemProp.leafScaleVariance == 0:
         leaf.scale = leafObj.scale
     # check if leaf is upside down, dot product to matrix world FINISH LATER
     # up = leaf.matrix_local.to_quaternion() @ Vector((0.0, 0.0, 1.0))
     # if (up.dot())
-    
 
 
 def prepareFlowers(context, flowerObj, flowerPos, stemSize, stemProp):
     stemObj = context.view_layer.objects.active
-    if flowerObj.parent is not stemObj:
-        flowerObj.parent = stemObj
-    flowerObj.location = [0, 0, stemSize-flowerPos]
-    flowerObj.rotation_euler = [0, 0, random.uniform(0, 359)]
+    if stemProp.baseStemObj is None:
+        if flowerObj.parent is not stemObj:
+            flowerObj.parent = stemObj
+        flowerObj.location = [0, 0, stemSize-flowerPos]
+        flowerObj.rotation_euler = [0, 0, random.uniform(0, 359)]
+    else:
+        newFlower = copyObj(flowerObj, stemObj)
+        newFlower.parent = stemObj
+        # for child in get_heirs(flowerObj, 4):
+        #     nchild = copyObj(child, newFlower)
+        newFlower.location = [0, 0, stemSize-flowerPos]
+        newFlower.rotation_euler = [0, 0, random.uniform(0, 359)]
     return

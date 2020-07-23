@@ -2,6 +2,12 @@ import bpy
 import bmesh
 import random
 import mathutils
+from .common_funcs import (
+    floatLerp,
+    get_heirs,
+    scaleRange,
+    easeOutCubic
+)
 
 
 class StemApplier(bpy.types.Operator):
@@ -15,7 +21,7 @@ class StemApplier(bpy.types.Operator):
 
     def execute(self, context):
         stemProp = context.object.data.stem_properties
-        stemObj = context.object
+        stemObj = context.view_layer.objects.active
         hairObj = stemProp.hairParticleObj
         stemProp.baseStemObj = None
         bpy.ops.mesh.stem_randomizer()
@@ -58,15 +64,19 @@ class StemApplier(bpy.types.Operator):
         for obj in curveCollection.objects:
             bpy.data.objects.remove(obj, do_unlink=True)
         for obj in fullCollection.objects:
-            if obj is not stemProp.hairParticleObj:
+            if obj is not hairObj or obj.parent is not hairObj:
                 bpy.data.objects.remove(obj, do_unlink=True)
 
-        if stemProp.hairParticleObj.users_collection[0] is not fullCollection:
-            fullCollection.objects.link(stemProp.hairParticleObj)
-            stemProp.hairParticleObj.users_collection[0].objects.unlink(
-                stemProp.hairParticleObj)
+        if hairObj.users_collection[0] is not fullCollection:
+            fullCollection.objects.link(hairObj)
+            hairObj.users_collection[0].objects.unlink(
+                hairObj)
+            # for child in get_heirs(hairObj):
+            #     fullCollection.objects.link(child)
+            #     hairObj.users_collection[0].objects.unlink(
+            #         child)
 
-        for mod in stemProp.hairParticleObj.modifiers:
+        for mod in hairObj.modifiers:
 
             if mod.type == 'PARTICLE_SYSTEM':
                 # set active collection to mesh collection so that the
@@ -77,7 +87,7 @@ class StemApplier(bpy.types.Operator):
                 context.view_layer.active_layer_collection = layerColl
 
                 override = context.copy()
-                override['object'] = stemProp.hairParticleObj
+                override['object'] = hairObj
                 # print(context.object.name)
                 bpy.ops.object.modifier_convert(override,
                                                 modifier=mod.name)
@@ -95,7 +105,7 @@ class StemApplier(bpy.types.Operator):
                 bpy.ops.mesh.separate(override, type='LOOSE')
 
         curveObjs = []
-        curveCenter = stemProp.hairParticleObj.location
+        curveCenter = hairObj.location
         curveDistRange = [0, 0]
         for obj in curveCollection.objects:
             curveObjs.append(obj)
@@ -135,12 +145,10 @@ class StemApplier(bpy.types.Operator):
         # now get to adding curve modifier to stemObj and duplicating it!
         # Find radius of curve collection for falloff
 
-        CurveCheck(stemObj)
         stemObjs = []
 
         # stemObjs.append(stemObj)
         for obj in stemObj.children:
-            CurveCheck(obj)
             stemObjs.append(obj)
 
         for x in range(len(curveCollection.objects)):
@@ -169,35 +177,21 @@ class StemApplier(bpy.types.Operator):
         return{'FINISHED'}
 
 
-def scaleRange(val, src, dst):
-    """
-    Scale the given value from the scale of src to the scale of dst.
-    """
-    return ((val - src[0]) / (src[1]-src[0])) * (dst[1]-dst[0]) + dst[0]
-
-
-def easeOutCubic(x):
-    return (1 - pow(1 - x, 3))
-
-
 def ApplyCurveMod(obj, curve):
-    for mod in obj.modifiers:
-        # print(mod.name)
-        if "Stem Curve" in mod.name and mod.type == 'CURVE':
-            mod.object = curve
-            mod.deform_axis = 'POS_Z'
-
-
-def CurveCheck(obj):
     hasCurve = False
     for mod in obj.modifiers:
-        if mod.type == 'CURVE':
+        if mod.type == 'CURVE' and mod.name == "Stem Curve":
             hasCurve = True
+            mod.object = curve
+            mod.deform_axis = 'POS_Z'
     if hasCurve is False:
-        obj.modifiers.new(name="Stem Curve", type='CURVE')
-
+        mod = obj.modifiers.new(name="Stem Curve", type='CURVE')
+        mod.object = curve
+        mod.deform_axis = 'POS_Z'
 
 # Recursivly transverse layer_collection for a particular name
+
+
 def recurLayerCollection(layerColl, collName):
     found = None
     if (layerColl.name == collName):
@@ -206,7 +200,3 @@ def recurLayerCollection(layerColl, collName):
         found = recurLayerCollection(layer, collName)
         if found:
             return found
-
-
-def floatLerp(a, b, c):
-    return (c*a)+((1-c) * b)
