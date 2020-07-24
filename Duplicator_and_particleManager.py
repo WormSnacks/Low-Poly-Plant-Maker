@@ -6,8 +6,10 @@ from .common_funcs import (
     floatLerp,
     get_heirs,
     scaleRange,
-    easeOutCubic
+    easeOutCubic,
+    measure
 )
+
 
 
 class StemApplier(bpy.types.Operator):
@@ -64,10 +66,11 @@ class StemApplier(bpy.types.Operator):
         for obj in curveCollection.objects:
             bpy.data.objects.remove(obj, do_unlink=True)
         for obj in fullCollection.objects:
-            if obj is not hairObj or obj.parent is not hairObj:
-                bpy.data.objects.remove(obj, do_unlink=True)
+            if obj != hairObj:
+                if obj.parent != hairObj:
+                    bpy.data.objects.remove(obj, do_unlink=True)
 
-        if hairObj.users_collection[0] is not fullCollection:
+        if hairObj.users_collection[0] != fullCollection:
             fullCollection.objects.link(hairObj)
             hairObj.users_collection[0].objects.unlink(
                 hairObj)
@@ -105,8 +108,9 @@ class StemApplier(bpy.types.Operator):
                 bpy.ops.mesh.separate(override, type='LOOSE')
 
         curveObjs = []
-        curveCenter = hairObj.location
-        curveDistRange = [0, 0]
+        curveCenter = hairObj.matrix_world.translation
+        print(hairObj.location)
+        curveDistRange = [9999, 0]
         for obj in curveCollection.objects:
             curveObjs.append(obj)
             bm = bmesh.new()
@@ -125,11 +129,15 @@ class StemApplier(bpy.types.Operator):
             obj.data.update()
             # print(origin)
             obj.location = origin
-            dist = (curveCenter - obj.location).length
+            context.view_layer.update()
+            dist = abs(measure(curveCenter, obj.matrix_world.translation))
+            print(obj.name)
+            print(origin)
+            if dist < curveDistRange[0]:
+                curveDistRange[0] = dist
             if dist > curveDistRange[1]:
                 curveDistRange[1] = dist
-            elif dist < curveDistRange[0]:
-                curveDistRange[0] = dist
+
 
         override = context.copy()
         override['selected_objects'] = curveObjs
@@ -160,9 +168,12 @@ class StemApplier(bpy.types.Operator):
 
             bpy.ops.object.select_all(action='DESELECT')
             context.view_layer.objects.active = newStem
-            target_curve = curveCollection.objects[x]
+            target_curve = curveObjs[x]
+            dist = abs(measure(curveCenter, target_curve.matrix_world.translation))
             adjustedDist = scaleRange(
-                (curveCenter-target_curve.location).length, curveDistRange, [0, 1])
+                dist, curveDistRange, [0, 1])
+            # print(adjustedDist)
+            # print(target_curve.name)
             hFalloff = floatLerp(
                 1-stemProp.heightFalloffFromCenter, 1, adjustedDist)
             hFalloff = easeOutCubic(hFalloff)
@@ -173,6 +184,10 @@ class StemApplier(bpy.types.Operator):
             ApplyCurveMod(newStem, target_curve)
             for child in newStem.children:
                 ApplyCurveMod(child, target_curve)
+            newStem.parent = hairObj
+            newStem.matrix_parent_inverse = hairObj.matrix_world.inverted()
+            target_curve.parent = hairObj
+            target_curve.matrix_parent_inverse = hairObj.matrix_world.inverted()
         context.view_layer.objects.active = stemObj
         return{'FINISHED'}
 
