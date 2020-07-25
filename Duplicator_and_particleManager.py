@@ -68,7 +68,8 @@ class StemApplier(bpy.types.Operator):
         for obj in fullCollection.objects:
             if obj != hairObj:
                 if obj.parent != hairObj:
-                    bpy.data.objects.remove(obj, do_unlink=True)
+                    if obj.type != 'EMPTY':
+                        bpy.data.objects.remove(obj, do_unlink=True)
 
         if hairObj.users_collection[0] != fullCollection:
             fullCollection.objects.link(hairObj)
@@ -131,8 +132,6 @@ class StemApplier(bpy.types.Operator):
             obj.location = origin
             context.view_layer.update()
             dist = abs(measure(curveCenter, obj.matrix_world.translation))
-            print(obj.name)
-            print(origin)
             if dist < curveDistRange[0]:
                 curveDistRange[0] = dist
             if dist > curveDistRange[1]:
