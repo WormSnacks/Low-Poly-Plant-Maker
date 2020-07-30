@@ -223,7 +223,7 @@ def FindLeafPos(leaf, leafObj, min, max, stemProp, stemSize):
         if stemProp.scaleLeafZOnly:
             leaf.scale = mathutils.Vector((s[0], s[1], svv[2]))
         else:
-            leaf.scale = mathutils.Vector((svv, svv, svv))
+            leaf.scale = svv
     elif leaf != leafObj and stemProp.leafScaleVariance == 0:
         leaf.scale = leafObj.scale
     # check if leaf is upside down, dot product to matrix world FINISH LATER

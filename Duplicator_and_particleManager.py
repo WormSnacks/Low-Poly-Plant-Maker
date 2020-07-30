@@ -71,14 +71,9 @@ class StemApplier(bpy.types.Operator):
                         bpy.data.objects.remove(obj, do_unlink=True)
 
         if hairObj.users_collection[0] != fullCollection:
-            fullCollection.objects.link(hairObj)
             hairObj.users_collection[0].objects.unlink(
                 hairObj)
-            # for child in get_heirs(hairObj):
-            #     fullCollection.objects.link(child)
-            #     hairObj.users_collection[0].objects.unlink(
-            #         child)
-
+            fullCollection.objects.link(hairObj)
         for mod in hairObj.modifiers:
 
             if mod.type == 'PARTICLE_SYSTEM':
@@ -109,7 +104,6 @@ class StemApplier(bpy.types.Operator):
 
         curveObjs = []
         curveCenter = hairObj.matrix_world.translation
-        print(hairObj.location)
         curveDistRange = [9999, 0]
         for obj in curveCollection.objects:
             curveObjs.append(obj)
@@ -120,14 +114,13 @@ class StemApplier(bpy.types.Operator):
                 (bm.verts[0].co[0],
                  bm.verts[0].co[1],
                  bm.verts[0].co[2]))
-            # print(bm.verts[0].co)
             bmesh.ops.translate(bm,
                                 verts=bm.verts,
                                 vec=-origin,
                                 )
             bm.to_mesh(obj.data)
             obj.data.update()
-            # print(origin)
+
             obj.location = origin
             context.view_layer.update()
             dist = abs(measure(curveCenter, obj.matrix_world.translation))
