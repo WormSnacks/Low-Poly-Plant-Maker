@@ -88,6 +88,8 @@ class PlantMakerPanel(bpy.types.Panel):
             col.prop(stemProp, "heightFalloffFromCenter",
                         text="Relative height falloff from center")
             col.operator("mesh.stem_apply")
+            if stemProp.duplicateContainer is not None:
+                col.operator("mesh.stems_bake_perm")
         elif stemProp.baseStemObj is not None:
             col.prop(stemProp, "baseStemObj", text="Duplicate of")
 

@@ -4,6 +4,7 @@ import random
 import mathutils
 import math
 
+
 def get_heirs(ob, levels=10):
     def recurse(ob, parent, depth, childlist):
         if depth > levels:
@@ -33,20 +34,24 @@ def easeOutCubic(x):
     return (1 - pow(1 - x, 2))
 
 
-def copyObj(obj, parent):
+def copyObj(obj, parent=None):
     nobj = obj.copy()
     if obj.type != 'EMPTY':
         nobj.data = obj.data.copy()
     nobj.animation_data_clear()
     # nobj.users_collection[0].objects.unlink(nobj)
-    parent.users_collection[0].objects.link(nobj)
+    if parent is not None:
+        nobj.parent = parent
+        parent.users_collection[0].objects.link(nobj)
+    
     return nobj
 
-def measure (first, second):
 
-	locx = second[0] - first[0]
-	locy = second[1] - first[1]
-	locz = second[2] - first[2]
+def measure(first, second):
 
-	distance = math.sqrt((locx)**2 + (locy)**2 + (locz)**2) 
-	return distance
+    locx = second[0] - first[0]
+    locy = second[1] - first[1]
+    locz = second[2] - first[2]
+
+    distance = math.sqrt((locx)**2 + (locy)**2 + (locz)**2)
+    return distance

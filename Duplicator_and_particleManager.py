@@ -11,7 +11,6 @@ from .common_funcs import (
 )
 
 
-
 class StemApplier(bpy.types.Operator):
     """Wren's personalized stem randomizing tool, part of Plant Maker
     pass things here after they have been generated into a collection earlier
@@ -59,7 +58,7 @@ class StemApplier(bpy.types.Operator):
         if curveCollection is None:
             curveCollection = bpy.data.collections.new(stemObj.name+" Curves")
             fullCollection.children.link(curveCollection)
-
+        stemProp.duplicateContainer = fullCollection
         # Collections now set up, now delete all objects
         for obj in meshCollection.objects:
             bpy.data.objects.remove(obj, do_unlink=True)
@@ -137,7 +136,6 @@ class StemApplier(bpy.types.Operator):
             if dist > curveDistRange[1]:
                 curveDistRange[1] = dist
 
-
         override = context.copy()
         override['selected_objects'] = curveObjs
         bpy.ops.object.convert(target='CURVE', keep_original=False)
@@ -168,7 +166,9 @@ class StemApplier(bpy.types.Operator):
             bpy.ops.object.select_all(action='DESELECT')
             context.view_layer.objects.active = newStem
             target_curve = curveObjs[x]
-            dist = abs(measure(curveCenter, target_curve.matrix_world.translation))
+            dist = abs(
+                measure(
+                    curveCenter, target_curve.matrix_world.translation))
             adjustedDist = scaleRange(
                 dist, curveDistRange, [0, 1])
             # print(adjustedDist)

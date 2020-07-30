@@ -105,6 +105,8 @@ class StemProperties(bpy.types.PropertyGroup):
         name="Base Stem", type=bpy.types.Object)
     hairParticleObj: bpy.props.PointerProperty(
         name="Hair Particle Obj", type=bpy.types.Object)
+    duplicateContainer: bpy.props.PointerProperty(
+        name="Duplicate Container", type=bpy.types.Collection)
     # 0-1 range exponential fall off relative to total height
     heightFalloffFromCenter: bpy.props.FloatProperty(min=0, max=1, default=0.1)
 
